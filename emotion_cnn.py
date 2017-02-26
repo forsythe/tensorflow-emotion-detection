@@ -9,9 +9,8 @@ _, csv_row = reader.read(filename_queue)
 
 record_defaults = [[-1], [""]]
 emotion, pixel_array = tf.decode_csv(csv_row, record_defaults=record_defaults)
-#features = tf.pack([pixel_array])
 
-def plot_images(images):
+def plot_image(images):
 	images = np.reshape(images, (48, 48))
 	plt.imshow(images, cmap='gray')
 	plt.show()
@@ -27,6 +26,6 @@ with tf.Session() as sess:
 		cur_emotion, cur_pixel_array = sess.run([emotion, pixel_array])
 		print(cur_emotion, cur_pixel_array)
 		cur_pixel_array = np.fromstring(cur_pixel_array, dtype=int, sep=" ")
-		plot_images(cur_pixel_array)
+		plot_image(cur_pixel_array)
 	coord.request_stop()
 	coord.join(threads)

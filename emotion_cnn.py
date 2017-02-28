@@ -5,9 +5,9 @@ import numpy as np
 ###################constants
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
 
-n_nodes_hl1 = 500
-n_nodes_hl2 = 500
-n_nodes_hl3 = 500
+n_nodes_hl1 = 300
+n_nodes_hl2 = 300
+n_nodes_hl3 = 300
 
 n_examples = 28709
 n_classes = 7
@@ -15,7 +15,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 100
 min_after_dequeue = 1000
-hm_epochs = 10
+hm_epochs = 0
 
 
 #################
@@ -118,7 +118,7 @@ with tf.Session() as sess:
 	## DO A TEST
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
 	
-	for item in range(min(5, batch_size)):
+	for item in range(min(10, batch_size)):
 		append_matrix_emotion = list()
 
 
@@ -127,7 +127,7 @@ with tf.Session() as sess:
 
 		value = sess.run(result, feed_dict={x: np.array(append_matrix_emotion, dtype=np.float32)})
 	
-		plot_image(append_matrix_emotion[0], cur_emotion_batch[0], value)
+		plot_image(append_matrix_emotion[0], cur_emotion_batch[item], value)
 
 	coord.request_stop()
 	coord.join(threads)

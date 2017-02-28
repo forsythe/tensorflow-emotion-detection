@@ -44,20 +44,18 @@ def neural_network_model(data):
 
 result = neural_network_model(x)
 
-
 def val_to_one_hot(x):
 	ans = np.array([0, 0, 0, 0, 0, 0, 0])
 	ans[x]=1
 	return ans
 
 ####################
-def plot_image(images, emotion_num=7, prediction=None):
+def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	images = np.reshape(images, [48, 48])
-	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num], fontsize=14, fontweight='bold')
+	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num] + "\n" + "best guess: " + emotion_name[prediction_best_guess], fontsize=14, fontweight='bold')
 	#print(tf.to_float(prediction[0:1]))
-	if not prediction is None:
-		for k in range(n_classes):
-			plt.text(-15, 10+5*k, str(emotion_name[k]) + ": " + str(prediction[0][k]), fontsize=12)
+	for k in range(n_classes):
+		plt.text(-15, 10+5*k, str(emotion_name[k]) + ": " + str(prediction[0][k]), fontsize=12)
 	plt.imshow(images, cmap='gray')
 	plt.show()
 
@@ -117,17 +115,16 @@ with tf.Session() as sess:
 	
 	## DO A TEST
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
-	
+
 	for item in range(min(10, batch_size)):
 		append_matrix_emotion = list()
-
 
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
 		append_matrix_emotion.append(cur_pixel_array_batch[item])		
 
 		value = sess.run(result, feed_dict={x: np.array(append_matrix_emotion, dtype=np.float32)})
-	
-		plot_image(append_matrix_emotion[0], cur_emotion_batch[item], value)
+
+		plot_image(append_matrix_emotion[0], cur_emotion_batch[item], value, np.argmax(value))
 
 	coord.request_stop()
 	coord.join(threads)

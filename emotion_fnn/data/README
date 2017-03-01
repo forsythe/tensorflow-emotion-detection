@@ -1,0 +1,2 @@
+input: 48x48 pixel gray values (between 0 and 255) 
+target: emotion category (beween 0 and 6: anger=0, disgust=1, fear=2, happy=3, sad=4, surprise=5, neutral=6)

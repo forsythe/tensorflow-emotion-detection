@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ###################constants
-emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
+emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
 
-n_nodes_hl1 = 100
-n_nodes_hl2 = 100
-n_nodes_hl3 = 100
+n_nodes_hl1 = 200
+n_nodes_hl2 = 200
+n_nodes_hl3 = 200
 
 n_examples = 28709
 n_classes = 7
@@ -20,7 +20,7 @@ hm_epochs = 200
 
 #################
 x = tf.placeholder('float', [None, 2304]) #48*48=2304
-y = tf.placeholder('float')
+y = tf.placeholder('float',[None, n_classes])
 
 def neural_network_model(data):
 	hidden_1_layer = {'weights': tf.Variable(tf.random_normal([2304, n_nodes_hl1])), 
@@ -42,11 +42,10 @@ def neural_network_model(data):
 	output = tf.add(tf.matmul(l3, output_layer['weights']), output_layer['biases'])
 	return output
 
-result = neural_network_model(x)
 
-def val_to_one_hot(x):
+def val_to_one_hot(val):
 	ans = np.array([0, 0, 0, 0, 0, 0, 0])
-	ans[x]=1
+	ans[val]=1
 	return ans
 
 ####################
@@ -55,7 +54,13 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num] + "\n" + "best guess: " + emotion_name[prediction_best_guess], fontsize=14, fontweight='bold')
 	#print(tf.to_float(prediction[0:1]))
 	for k in range(n_classes):
-		plt.text(-15, 10+5*k, str(emotion_name[k]) + ": " + str(prediction[0][k]), fontsize=12)
+		plt.text(-15, 10+3*k, str(emotion_name[k]) + ": " + str(prediction[0][k]), fontsize=12)
+	plt.imshow(images, cmap='gray')
+	plt.show()
+
+def plot_image_no_pred(images, emotion_num):
+	images = np.reshape(images, [48, 48])
+	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num], fontsize=14, fontweight='bold')
 	plt.imshow(images, cmap='gray')
 	plt.show()
 
@@ -73,59 +78,76 @@ emotion_batch, pixel_array_batch = tf.train.shuffle_batch(
       min_after_dequeue=min_after_dequeue)
 
 prediction = neural_network_model(x)
+normalized_prediction = tf.nn.softmax(neural_network_model(x))
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y))
-optimizer = tf.train.AdamOptimizer().minimize(cost)
+train_step = tf.train.AdamOptimizer().minimize(cost)
 
 with tf.Session() as sess:
 	tf.global_variables_initializer().run()
 	coord = tf.train.Coordinator()
 	threads = tf.train.start_queue_runners(coord=coord)
-	'''
-	for i in range(1): #int(n_examples/batch_size))
-		cur_emotion, cur_pixel_array = sess.run([emotion, pixel_array])
-		cur_pixel_array = np.resize(np.fromstring(cur_pixel_array, dtype=int, sep=" "), [48, 48])
-		
-		#plot_image(cur_pixel_array, cur_emotion)
-		#print(sess.run(tf.cast(cur_pixel_array, dtype=tf.int16)))
-		#cur_pixel_array = tf.reshape(tf.strided_slice(tf.decode_raw(pixel_array, tf.int8), [0], [48*48], [1]), [48, 48])
-		print(cur_pixel_array)
-		plot_image(cur_pixel_array, cur_emotion)
-	'''
+
 	for epoch in range(hm_epochs):
 		epoch_loss = 0
 		for batch in range(int(n_examples/batch_size)):
-			#print("currently on batch", batch)
 			cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
 			append_matrix_emotion = list()
 			append_matrix_name = list()
 			for item in range(batch_size):
-				#print("\tcurrently on item", item)				
-				#cur_pixel_array_batch[item] = np.resize(np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" "), [48, 48])
 				cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
 				append_matrix_emotion.append(cur_pixel_array_batch[item])
 				append_matrix_name.append(val_to_one_hot(cur_emotion_batch[item]))
-				#print(cur_pixel_array_batch[item])
-				#plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item])
-			#print(np.array(append_matrix))
-			#cur_pixel_array_batch = np.array(cur_pixel_array_batch)
-			_, c = sess.run([optimizer, cost], feed_dict = {x: np.array(append_matrix_emotion), y: np.array(append_matrix_name)}) #np.reshape(cur_pixel_array_batch[item], [1, 2304])
-				#print(cur_pixel_array_batch[item].shape)
-			epoch_loss += c
-		print('Epoch', epoch, 'completed out of', hm_epochs, 'loss:', epoch_loss)
-	
-	## DO A TEST
-	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
-
-	for item in range(min(10, batch_size)):
-		append_matrix_emotion = list()
-
+				#print("adding")
+				#print(append_matrix_emotion[item])
+				#print("adding")
+				#print(cur_emotion_batch[item])
+				#print(np.array(append_matrix_emotion))
+				#print(np.array(append_matrix_name))
+				#plot_image(append_matrix_emotion[item], cur_emotion_batch[item])	
+			#print("about to train with x:", np.array(append_matrix_emotion).shape)
+			#print("about to train with y:", np.array(append_matrix_name).shape)
+			_, c = sess.run([train_step, cost], feed_dict = {x: np.array(append_matrix_emotion), y: np.array(append_matrix_name)}) #np.reshape(cur_pixel_array_batch[item], [1, 2304])
+			epoch_loss += c	
+		print('Epoch', epoch+1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+		
+	## DO AN ACCURACY PRINT
+	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
+	accuracy = 0	
+	append_matrix_emotion = list()
+	append_matrix_name = list()	
+	for item in range(batch_size):
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
-		append_matrix_emotion.append(cur_pixel_array_batch[item])		
+		#append_matrix_emotion.append(cur_pixel_array_batch[item])
+		#append_matrix_name.append(val_to_one_hot(cur_emotion_batch[item]))
+		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
+		#print("cur emotion is", cur_emotion_batch[item])
+		#print("pls be different",value[0])		
+		#print("np argmax value is", np.argmax(value[0]))
+		if cur_emotion_batch[item] == np.argmax(value[0]):
+			accuracy+=1
+	print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
+	
+	###
+	## DO A VISUALIZE
+	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
+	accuracy = 0	
+	append_matrix_emotion = list()
+	append_matrix_name = list()	
+	for item in range(min(10, batch_size)):
+		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
+		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
+		plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item], value, np.argmax(value[0]))
 
-		value = sess.run(result, feed_dict={x: np.array(append_matrix_emotion, dtype=np.float32)})
-
-		plot_image(append_matrix_emotion[0], cur_emotion_batch[item], value, np.argmax(value))
-
+	
+	for item in range(0):
+		cur_emotion, cur_pixel_array = sess.run([emotion, pixel_array])
+		cur_pixel_array = np.fromstring(cur_pixel_array, dtype=int, sep=" ")
+		#print("cur pixel array", cur_pixel_array)
+		#print("prediction", sess.run(normalized_prediction, feed_dict={x: np.array([cur_pixel_array])}))
+		vis_value = sess.run(normalized_prediction, feed_dict={x: np.array([cur_pixel_array])})
+		#print("prediction array:", vis_value)
+		#print("answer array:", val_to_one_hot(cur_emotion))
+		plot_image(cur_pixel_array, cur_emotion, vis_value, np.argmax(vis_value))
 	coord.request_stop()
 	coord.join(threads)
 
@@ -136,5 +158,6 @@ with tf.Session() as sess:
 
 
 #train_neural_network(x)
+
 
 

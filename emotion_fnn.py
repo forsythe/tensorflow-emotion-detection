@@ -5,17 +5,17 @@ import numpy as np
 ###################constants
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
 
-n_nodes_hl1 = 300
-n_nodes_hl2 = 300
-n_nodes_hl3 = 300
+n_nodes_hl1 = 100
+n_nodes_hl2 = 100
+n_nodes_hl3 = 100
 
 n_examples = 28709
 n_classes = 7
 
 capacity = 2000
-batch_size = 100
+batch_size = 500
 min_after_dequeue = 1000
-hm_epochs = 0
+hm_epochs = 200
 
 
 #################

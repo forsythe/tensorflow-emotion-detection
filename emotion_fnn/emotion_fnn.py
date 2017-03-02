@@ -6,8 +6,8 @@ import numpy as np
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
 
 ###################NEURAL NETWORK PROPERTIES
-n_nodes_hl1 = 50
-n_nodes_hl2 = 50
+n_nodes_hl1 = 500
+n_nodes_hl2 = 500
 n_nodes_hl3 = 50
 
 n_examples = 28709
@@ -16,7 +16,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 20
+hm_epochs = 50
 
 ###################TENSORFLOW
 x = tf.placeholder('float', [None, 2304]) #48*48=2304

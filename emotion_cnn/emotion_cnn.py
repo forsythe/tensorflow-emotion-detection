@@ -13,7 +13,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 500
 min_after_dequeue = 1000
-hm_epochs = 10
+hm_epochs = 40
 
 ###################TENSORFLOW
 x = tf.placeholder('float', [None, 2304]) #48*48=2304

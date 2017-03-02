@@ -6,23 +6,23 @@ import numpy as np
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
 
 ###################NEURAL NETWORK PROPERTIES
-n_nodes_hl1 = 200
-n_nodes_hl2 = 200
-n_nodes_hl3 = 200
+n_nodes_hl1 = 50
+n_nodes_hl2 = 50
+n_nodes_hl3 = 50
 
 n_examples = 28709
 n_classes = 7
 
 capacity = 2000
-batch_size = 500
+batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 200
+hm_epochs = 20
 
 ###################TENSORFLOW
 x = tf.placeholder('float', [None, 2304]) #48*48=2304
 y = tf.placeholder('float',[None, n_classes])
 
-def neural_network_model(data):
+def neural_network_model_3_hidden_layers(data):
 	hidden_1_layer = {'weights': tf.Variable(tf.random_normal([2304, n_nodes_hl1])), 
 					  'biases': tf.Variable(tf.random_normal([n_nodes_hl1]))}
 	hidden_2_layer = {'weights': tf.Variable(tf.random_normal([n_nodes_hl1, n_nodes_hl2])), 
@@ -42,6 +42,21 @@ def neural_network_model(data):
 	output = tf.add(tf.matmul(l3, output_layer['weights']), output_layer['biases'])
 	return output
 
+def neural_network_model(data):
+	hidden_1_layer = {'weights': tf.Variable(tf.random_normal([2304, n_nodes_hl1])), 
+					  'biases': tf.Variable(tf.random_normal([n_nodes_hl1]))}
+	hidden_2_layer = {'weights': tf.Variable(tf.random_normal([n_nodes_hl1, n_nodes_hl2])), 
+					  'biases': tf.Variable(tf.random_normal([n_nodes_hl2]))}
+	output_layer = {'weights': tf.Variable(tf.random_normal([n_nodes_hl2, n_classes])), 
+					  'biases': tf.Variable(tf.random_normal([n_classes]))}
+	l1 = tf.add(tf.matmul(data, hidden_1_layer['weights']), hidden_1_layer['biases'])
+	l1 = tf.nn.relu(l1)
+
+	l2 = tf.add(tf.matmul(l1, hidden_2_layer['weights']), hidden_2_layer['biases'])
+	l2 = tf.nn.relu(l2)
+
+	output = tf.add(tf.matmul(l2, output_layer['weights']), output_layer['biases'])
+	return output
 
 def val_to_one_hot(val):
 	ans = np.array([0, 0, 0, 0, 0, 0, 0])

@@ -16,12 +16,29 @@ min_after_dequeue = 1000
 hm_epochs = 40
 
 ###################TENSORFLOW
+tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
+FLAGS = tf.app.flags.FLAGS
+
 x = tf.placeholder('float', [None, 2304]) #48*48=2304
 y = tf.placeholder('float',[None, n_classes])
 
 
 keep_rate = 0.8
 keep_prob = tf.placeholder(tf.float32)
+
+weights = {'W_conv1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+			'W_conv2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+			'W_fc': tf.Variable(tf.random_normal([12*12*64, 1024])),
+			'out': tf.Variable(tf.random_normal([1024, n_classes]))}
+biases = {'b_conv1': tf.Variable(tf.random_normal([32])),
+			'b_conv2': tf.Variable(tf.random_normal([64])),
+			'b_fc': tf.Variable(tf.random_normal([1024])),
+			'out': tf.Variable(tf.random_normal([n_classes]))}
+
+saver = tf.train.Saver()  # defaults to saving all variables - in this case w and b
+choice = input("load or train? ")
+while (not (choice == "train")) and (not (choice == "load")):
+	choice = input("invalid input. load or train? ")
 
 def conv2d(x, W):
 	return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
@@ -30,14 +47,7 @@ def maxpool2d(x):
 	return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2,1], padding='SAME')
 
 def conv_neural_network_model(data):
-	weights = {'W_conv1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
-				'W_conv2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
-				'W_fc': tf.Variable(tf.random_normal([12*12*64, 1024])),
-				'out': tf.Variable(tf.random_normal([1024, n_classes]))}
-	biases = {'b_conv1': tf.Variable(tf.random_normal([32])),
-				'b_conv2': tf.Variable(tf.random_normal([64])),
-				'b_fc': tf.Variable(tf.random_normal([1024])),
-				'out': tf.Variable(tf.random_normal([n_classes]))}
+
 	x = tf.reshape(data, shape=[-1, 48, 48, 1])
 	conv1 = conv2d(x, weights['W_conv1']) + biases['b_conv1']
 	conv1 = maxpool2d(conv1)
@@ -94,32 +104,41 @@ with tf.Session() as sess:
 	threads = tf.train.start_queue_runners(coord=coord)
 
 	## DO A TRAIN
-	for epoch in range(hm_epochs):
-		epoch_loss = 0
-		for batch in range(int(n_examples/batch_size)):
-			cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
-			append_matrix_emotion = list()
-			append_matrix_name = list()
-			for item in range(batch_size):
-				cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
-				append_matrix_emotion.append(cur_pixel_array_batch[item])
-				append_matrix_name.append(val_to_one_hot(cur_emotion_batch[item]))
-			_, c = sess.run([train_step, cost], feed_dict = {x: np.array(append_matrix_emotion), y: np.array(append_matrix_name)}) #np.reshape(cur_pixel_array_batch[item], [1, 2304])
-			epoch_loss += c	
-		print('Epoch', epoch+1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
-		
-	## DO AN ACCURACY PRINT
-	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
-	accuracy = 0	
-	append_matrix_emotion = list()
-	append_matrix_name = list()	
-	for item in range(batch_size):
-		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
-		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
-		if cur_emotion_batch[item] == np.argmax(value[0]):
-			accuracy+=1
-	print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
-	
+	if (choice == "train"):
+		for epoch in range(hm_epochs):
+			epoch_loss = 0
+			for batch in range(int(n_examples/batch_size)):
+				cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])		
+				append_matrix_emotion = list()
+				append_matrix_name = list()
+				for item in range(batch_size):
+					cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
+					append_matrix_emotion.append(cur_pixel_array_batch[item])
+					append_matrix_name.append(val_to_one_hot(cur_emotion_batch[item]))
+				_, c = sess.run([train_step, cost], feed_dict = {x: np.array(append_matrix_emotion), y: np.array(append_matrix_name)}) #np.reshape(cur_pixel_array_batch[item], [1, 2304])
+				epoch_loss += c	
+			print('Epoch', epoch+1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+			
+		## DO AN ACCURACY PRINT
+		cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
+		accuracy = 0	
+		append_matrix_emotion = list()
+		append_matrix_name = list()	
+		for item in range(batch_size):
+			cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
+			value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
+			if cur_emotion_batch[item] == np.argmax(value[0]):
+				accuracy+=1
+		print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
+		print("NN model has been saved.")
+	else:
+		ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+		if ckpt and ckpt.model_checkpoint_path:
+			saver.restore(sess, ckpt.model_checkpoint_path)
+			print("NN model has been restored!")
+		else:
+			print("no checkpoint found???")
+			exit()
 	## DO A VISUALIZE
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
 	accuracy = 0	

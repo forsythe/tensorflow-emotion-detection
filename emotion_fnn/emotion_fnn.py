@@ -16,7 +16,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 1
+hm_epochs = 40
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
@@ -131,8 +131,9 @@ with tf.Session() as sess:
 	append_matrix_name = list()	
 	for item in range(min(10, batch_size)):
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
-		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
-		plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item], value, np.argmax(value[0]))
+		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
+		normalized_value = (value-np.mean(value))/np.std(value)
+		plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item], sess.run(tf.nn.softmax(normalized_value)), np.argmax(value[0]))
 
 	coord.request_stop()
 	coord.join(threads)

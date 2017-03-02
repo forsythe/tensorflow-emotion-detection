@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ###################
-emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
 
 ###################NEURAL NETWORK PROPERTIES
 n_nodes_hl1 = 500
@@ -67,7 +67,7 @@ def plot_image_no_pred(images, emotion_num):
 	plt.imshow(images, cmap='gray')
 	plt.show()
 
-filename_queue = tf.train.string_input_producer(['train.csv'])
+filename_queue = tf.train.string_input_producer(['filthy_frank.csv'])
 reader = tf.TextLineReader(skip_header_lines=1) #skip_header_lines=1
 _, csv_row = reader.read(filename_queue)
 record_defaults = [[0], [""]]

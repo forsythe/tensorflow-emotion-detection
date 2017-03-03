@@ -70,11 +70,17 @@ def val_to_one_hot(x):
 
 def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	images = np.reshape(images, [48, 48])
-	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num] + "\n" + "best guess: " + emotion_name[prediction_best_guess], fontsize=14, fontweight='bold')
-	#print(tf.to_float(prediction[0:1]))
+	correct_emotion = emotion_name[emotion_num]
+	best_guess = emotion_name[prediction_best_guess]
+	txt = ""
 	for k in range(n_classes):
-		plt.text(-15, 10+3*k, str(emotion_name[k]) + ": " + str(prediction[0][k]), fontsize=12)
+		txt +=  str(emotion_name[k]) + ": " + str(round(prediction[0][k], 3)) + "\n"
+	fig = plt.figure()
+	ax = fig.add_subplot(111)
+	ax.set_title("Correct emotion: " + correct_emotion + "\nBest guess: " + best_guess, fontweight='bold')
+	plt.figtext(0.99, 0.01, txt, horizontalalignment='right') 
 	plt.imshow(images, cmap='gray')
+	plt.tight_layout
 	plt.show()
 
 def plot_image_no_pred(images, emotion_num):
@@ -130,6 +136,7 @@ with tf.Session() as sess:
 			if cur_emotion_batch[item] == np.argmax(value[0]):
 				accuracy+=1
 		print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
+		saver.save(sess, FLAGS.checkpoint_dir+"model.ckpt", global_step=hm_epochs)
 		print("NN model has been saved.")
 	else:
 		ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)

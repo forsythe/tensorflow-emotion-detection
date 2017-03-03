@@ -1,5 +1,5 @@
 # tensorflow-emotion-detection
-uses opencv, tensorflow, and numpy  
+uses opencv, tensorflow, numpy, and matplotlib  
 has nn and cnn implementations with ~70%, 97% accuracy respectively  
 dataset taken from [Kaggle](https://www.kaggle.com/c/challenges-in-representation-learning-facial-expression-recognition-challenge/data)
 

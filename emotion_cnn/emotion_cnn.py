@@ -79,7 +79,7 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 
 	fig = plt.figure()
 	left = fig.add_subplot(121)
-	title("Correct emotion: " + correct_emotion+"\n", fontweight='bold')
+	title("Correct emotion: " + correct_emotion+"\n"+"Predicted emotion: " + best_guess, fontweight='bold')
 	imshow(images,cmap='gray')
 	
 	right = fig.add_subplot(122)	
@@ -88,7 +88,6 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	xlim([0, 1])
 	yticks(pos, emotion_name[0:7])
 	xlabel('Confidence')
-	title('Prediction: ' + best_guess, fontweight='bold')
 	grid(True)
 	plt.tight_layout()
 	plt.show()

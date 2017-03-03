@@ -59,12 +59,21 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	txt = ""
 	for k in range(n_classes):
 		txt +=  str(emotion_name[k]) + ": " + str(round(prediction[0][k], 3)) + "\n"
+
 	fig = plt.figure()
-	ax = fig.add_subplot(111)
-	ax.set_title("Correct emotion: " + correct_emotion + "\nBest guess: " + best_guess, fontweight='bold')
-	plt.figtext(0.99, 0.01, txt, horizontalalignment='right') 
-	plt.imshow(images, cmap='gray')
-	plt.tight_layout
+	left = fig.add_subplot(121)
+	title("Correct emotion: " + correct_emotion+"\n", fontweight='bold')
+	imshow(images,cmap='gray')
+	
+	right = fig.add_subplot(122)	
+	pos = arange(7)+.5    # the bar centers on the y axis
+	barh(pos, prediction.tolist()[0], align='center')
+	xlim([0, 1])
+	yticks(pos, emotion_name[0:7])
+	xlabel('Confidence')
+	title('Prediction: ' + best_guess, fontweight='bold')
+	grid(True)
+	plt.tight_layout()
 	plt.show()
 
 def plot_image_no_pred(images, emotion_num):

@@ -13,7 +13,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 500
 min_after_dequeue = 1000
-hm_epochs = 100
+hm_epochs = 50
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')

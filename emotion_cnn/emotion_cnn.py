@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ###################
-emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
 
 ###################NEURAL NETWORK PROPERTIES
 
@@ -13,7 +13,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 500
 min_after_dequeue = 1000
-hm_epochs = 40
+hm_epochs = 100
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
@@ -83,7 +83,7 @@ def plot_image_no_pred(images, emotion_num):
 	plt.imshow(images, cmap='gray')
 	plt.show()
 
-filename_queue = tf.train.string_input_producer(['filthy_frank.csv'])
+filename_queue = tf.train.string_input_producer(['train.csv'])
 reader = tf.TextLineReader(skip_header_lines=1) #skip_header_lines=1
 _, csv_row = reader.read(filename_queue)
 record_defaults = [[0], [""]]

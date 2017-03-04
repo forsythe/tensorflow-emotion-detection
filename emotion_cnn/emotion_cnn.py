@@ -17,7 +17,7 @@ n_classes = 7
 capacity = 2000
 batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 100
+hm_epochs = 1
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
@@ -40,9 +40,9 @@ biases = {'b_conv1': tf.Variable(tf.random_normal([32])),
 			'out': tf.Variable(tf.random_normal([n_classes]))}
 
 saver = tf.train.Saver()  # defaults to saving all variables - in this case w and b
-choice = input("load or train? ")
-while (not (choice == "train")) and (not (choice == "load")):
-	choice = input("invalid input. load or train? ")
+choice = input("[load], [train] from scratch, or [continue] training? ")
+while (not (choice == "train")) and (not (choice == "load") and (not (choice == "continue"))):
+	choice = input("Invalid input. Please try again.")
 
 def conv2d(x, W):
 	return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
@@ -122,7 +122,12 @@ with tf.Session() as sess:
 	threads = tf.train.start_queue_runners(coord=coord)
 
 	## DO A TRAIN
-	if (choice == "train"):
+	if (choice == "continue"):
+		ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+		if ckpt and ckpt.model_checkpoint_path:
+			saver.restore(sess, ckpt.model_checkpoint_path)
+			print("NN model has been restored for continued training!")
+	if (choice == "train" or choice == "continue"):
 		for epoch in range(hm_epochs):
 			epoch_loss = 0
 			for batch in range(int(n_examples/batch_size)):
@@ -136,6 +141,9 @@ with tf.Session() as sess:
 				_, c = sess.run([train_step, cost], feed_dict = {x: np.array(append_matrix_emotion), y: np.array(append_matrix_name)}) #np.reshape(cur_pixel_array_batch[item], [1, 2304])
 				epoch_loss += c	
 			print('Epoch', epoch+1, 'completed out of', hm_epochs, 'loss:', epoch_loss)
+			saver.save(sess, FLAGS.checkpoint_dir+"model.ckpt", global_step=hm_epochs)
+			print("Progress checkpoint saved")
+			
 			
 		## DO AN ACCURACY PRINT
 		cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
@@ -170,7 +178,7 @@ with tf.Session() as sess:
 	face_cascade = cv2.CascadeClassifier('/home/forsythe/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml')
 	cap = cv2.VideoCapture(0)
 	#cv2.namedWindow("crop", cv2.WINDOW_NORMAL)
-	z = 6 #zoom factor (lower value is higher zoom)
+	z = 8 #zoom factor (lower value is higher zoom)
 	down_offset = 25
 	#final plot
 	plt.ion()

@@ -1,6 +1,8 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
+from pylab import *
 
 ###################
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
@@ -146,6 +148,58 @@ with tf.Session() as sess:
 		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
 		normalized_value = (value-np.mean(value))/np.std(value)
 		plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item], sess.run(tf.nn.softmax(normalized_value)), np.argmax(value[0]))
+## DO A WEBCAM
+
+	face_cascade = cv2.CascadeClassifier('/home/forsythe/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml')
+	cap = cv2.VideoCapture(0)
+	#cv2.namedWindow("crop", cv2.WINDOW_NORMAL)
+	z = 10 #zoom factor (lower value is higher zoom)
+
+	#final plot
+	plt.ion()
+
+	while True:
+		ret, img = cap.read()
+		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+		faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+		for (xx,yy,w,h) in faces:
+			cv2.rectangle(img,(xx+w//z,yy+h//z),(xx+w-w//z,yy+h-h//z),(255,0,0),2)
+			roi_gray = gray[yy+h//z:yy+h-h//z, xx+w//z:xx+w-w//z]
+			#print(type(roi_gray))
+			#cv2.imshow("crop", cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA))
+			cur_pixel_array = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
+			#print(cur_pixel_array.shape)
+			cv2.imshow("webcam",cur_pixel_array)
+
+			cur_pixel_array = np.resize(cur_pixel_array, (1, 48*48))
+			
+			#print(len(cur_pixel_array[0]))
+			#print(type(cur_pixel_array[0]))
+			value = sess.run(prediction, feed_dict={x: cur_pixel_array})
+
+			normalized_value = (value-np.mean(value))/np.std(value)
+			correct_emotion = emotion_name[np.argmax(value[0])]
+			best_guess = emotion_name[np.argmax(value[0])]
+			normalized_value = sess.run(tf.nn.softmax(normalized_value))
+			print(best_guess)
+			#title("Correct emotion: " + correct_emotion+"\n"+"Predicted emotion: " + best_guess, fontweight='bold')
+			txt = ""
+			for k in range(n_classes):
+				txt +=  str(emotion_name[k]) + ": " + str(round(normalized_value[0][k], 3)) + "\n"
+			#barh(pos, normalized_value.tolist()[0], align='center')
+			#yticks(pos, emotion_name[0:7])
+			#plt.show()
+			#plt.pause(0.05)
+			##plot
+
+		#cv2.imshow('img',img)
+		k = cv2.waitKey(30) & 0xff
+		if k == 27:
+			break
+
+	cap.release()
+	cv2.destroyAllWindows()
 
 	coord.request_stop()
 	coord.join(threads)

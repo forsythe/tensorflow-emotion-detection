@@ -4,6 +4,8 @@ import numpy as np
 from pylab import *
 import cv2
 
+import time
+
 ###################
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
 
@@ -13,9 +15,9 @@ n_examples = 28709
 n_classes = 7
 
 capacity = 2000
-batch_size = 500
+batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 50
+hm_epochs = 100
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
@@ -25,7 +27,7 @@ x = tf.placeholder('float', [None, 2304]) #48*48=2304
 y = tf.placeholder('float',[None, n_classes])
 
 
-keep_rate = 0.8
+keep_rate = 0.6
 keep_prob = tf.placeholder(tf.float32)
 
 weights = {'W_conv1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
@@ -49,7 +51,6 @@ def maxpool2d(x):
 	return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2,1], padding='SAME')
 
 def conv_neural_network_model(data):
-
 	x = tf.reshape(data, shape=[-1, 48, 48, 1])
 	conv1 = conv2d(x, weights['W_conv1']) + biases['b_conv1']
 	conv1 = maxpool2d(conv1)
@@ -159,7 +160,7 @@ with tf.Session() as sess:
 			exit()
 	## DO A VISUALIZE
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
-	for item in range(min(2, batch_size)):
+	for item in range(min(10, batch_size)):
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
 		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
 		normalized_value = (value-np.mean(value))/np.std(value)
@@ -169,47 +170,53 @@ with tf.Session() as sess:
 	face_cascade = cv2.CascadeClassifier('/home/forsythe/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml')
 	cap = cv2.VideoCapture(0)
 	#cv2.namedWindow("crop", cv2.WINDOW_NORMAL)
-	z = 10 #zoom factor (lower value is higher zoom)
-
+	z = 6 #zoom factor (lower value is higher zoom)
+	down_offset = 25
 	#final plot
 	plt.ion()
-
+	start_time = time.time()
 	while True:
 		ret, img = cap.read()
 		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 		faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
 		for (xx,yy,w,h) in faces:
-			cv2.rectangle(img,(xx+w//z,yy+h//z),(xx+w-w//z,yy+h-h//z),(255,0,0),2)
-			roi_gray = gray[yy+h//z:yy+h-h//z, xx+w//z:xx+w-w//z]
+			cv2.rectangle(img,(xx+w//z,yy+h//z+down_offset),(xx+w-w//z,yy+h-h//z+down_offset),(255,0,0),2)
+			roi_gray = gray[yy+h//z+down_offset:yy+h-h//z+down_offset, xx+w//z:xx+w-w//z]
 			#print(type(roi_gray))
 			#cv2.imshow("crop", cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA))
-			cur_pixel_array = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
-			#print(cur_pixel_array.shape)
-			cv2.imshow("webcam",cur_pixel_array)
+			if time.time() - start_time > 1:
+				start_time = time.time()
+				cur_pixel_array = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
+				#print(cur_pixel_array.shape)
+				cv2.imshow("webcam",cur_pixel_array)
 
-			cur_pixel_array = np.resize(cur_pixel_array, (1, 48*48))
+				cur_pixel_array = np.resize(cur_pixel_array, (1, 48*48))
+				#print(len(cur_pixel_array[0]))
+				#print(type(cur_pixel_array[0]))
+				value = sess.run(prediction, feed_dict={x: cur_pixel_array})
+
+				normalized_value = (value-np.mean(value))/np.std(value)
+				correct_emotion = emotion_name[np.argmax(value[0])]
+				best_guess = emotion_name[np.argmax(value[0])]
+				normalized_value = sess.run(tf.nn.softmax(normalized_value))
+
+				txt = ""
+				for k in range(n_classes):
+					txt +=  str(emotion_name[k]) + ": " + str(round(normalized_value[0][k], 3)) + "\n"
+
+				plt.clf()
+				plt.title("Predicted emtion: " + best_guess, fontweight='bold')
+				plt.barh(range(7), normalized_value.tolist()[0], align='center')	
+				yticks(range(7), emotion_name[0:7])
+				xlim([0, 1])
+				grid(True)
+				xlabel('Confidence')
+				plt.draw()
+				plt.pause(0.0001)
+
 			
-			#print(len(cur_pixel_array[0]))
-			#print(type(cur_pixel_array[0]))
-			value = sess.run(prediction, feed_dict={x: cur_pixel_array})
-
-			normalized_value = (value-np.mean(value))/np.std(value)
-			correct_emotion = emotion_name[np.argmax(value[0])]
-			best_guess = emotion_name[np.argmax(value[0])]
-			normalized_value = sess.run(tf.nn.softmax(normalized_value))
-			print(best_guess)
-			#title("Correct emotion: " + correct_emotion+"\n"+"Predicted emotion: " + best_guess, fontweight='bold')
-			txt = ""
-			for k in range(n_classes):
-				txt +=  str(emotion_name[k]) + ": " + str(round(normalized_value[0][k], 3)) + "\n"
-			#barh(pos, normalized_value.tolist()[0], align='center')
-			#yticks(pos, emotion_name[0:7])
-			#plt.show()
-			#plt.pause(0.05)
-			##plot
-
-		#cv2.imshow('img',img)
+		cv2.imshow('img',img)
 		k = cv2.waitKey(30) & 0xff
 		if k == 27:
 			break

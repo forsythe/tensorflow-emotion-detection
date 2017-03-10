@@ -34,7 +34,7 @@ hidden_2_layer = {'weights': tf.Variable(tf.random_normal([n_nodes_hl1, n_nodes_
 output_layer = {'weights': tf.Variable(tf.random_normal([n_nodes_hl2, n_classes])), 
 					'biases': tf.Variable(tf.random_normal([n_classes]))}
 
-saver = tf.train.Saver()  # defaults to saving all variables - in this case w and b
+saver = tf.train.Saver(max_to_keep=1)  # defaults to saving all variables - in this case w and b
 choice = input("load or train? ")
 while (not (choice == "train")) and (not (choice == "load")):
 	choice = input("invalid input. load or train? ")	
@@ -131,7 +131,7 @@ with tf.Session() as sess:
 			if cur_emotion_batch[item] == np.argmax(value[0]):
 				accuracy+=1
 		print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
-		saver.save(sess, FLAGS.checkpoint_dir+"model.ckpt", global_step=hm_epochs)
+		saver.save(sess, FLAGS.checkpoint_dir+"model.ckpt", global_step=epoch)
 		print("NN model has been saved.")
 	else:
 		ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)

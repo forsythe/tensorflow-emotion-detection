@@ -8,6 +8,13 @@ import time
 
 ###################
 emotion_name = ["anger", "disgust", "fear", "happy", "sad", "surprise", "neutral", "unknown"]
+anger = 0
+disgust = 1
+fear = 2
+happy = 3
+sad = 4
+surprise = 5
+neutral = 6
 
 ###################NEURAL NETWORK PROPERTIES
 
@@ -120,6 +127,8 @@ normalized_prediction = tf.nn.softmax(conv_neural_network_model(x))
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y))
 train_step = tf.train.AdamOptimizer().minimize(cost)
 
+confusion_matrix = [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]
+
 with tf.Session() as sess:
 	tf.global_variables_initializer().run()
 	coord = tf.train.Coordinator()
@@ -160,6 +169,7 @@ with tf.Session() as sess:
 			value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
 			if cur_emotion_batch[item] == np.argmax(value[0]):
 				accuracy+=1
+			confusion_matrix[np.argmax(value[0])][cur_emotion_batch[item]] +=1
 		print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
 		saver.save(sess, FLAGS.checkpoint_dir+"model.ckpt", global_step=hm_epochs)
 		print("NN model has been saved.")
@@ -183,6 +193,24 @@ with tf.Session() as sess:
 		else:
 			print("no checkpoint found???")
 			exit()
+	## DO A CONFUSION MATRIX
+	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
+	append_matrix_emotion = list()
+	append_matrix_name = list()	
+	for item in range(batch_size):
+		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
+		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
+		#print(np.argmax(value[0]), cur_emotion_batch[item])
+		confusion_matrix[np.argmax(value[0])][cur_emotion_batch[item]] +=1
+	print(confusion_matrix)
+	confusion_matrix = np.array(confusion_matrix)/np.array(confusion_matrix).astype(np.float).sum(axis=1)
+	plt.imshow(confusion_matrix, cmap=plt.cm.RdBu, interpolation='nearest')
+	plt.xticks(np.arange(0,7), emotion_name[:-1])
+	plt.yticks(np.arange(0,7), emotion_name[:-1])
+	plt.xlabel("Prediction")
+	plt.ylabel("Actual")
+	plt.colorbar()
+	plt.show()
 	## DO A VISUALIZE
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
 	for item in range(min(5, batch_size)):
@@ -190,7 +218,7 @@ with tf.Session() as sess:
 		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
 		normalized_value = (value-np.mean(value))/np.std(value)
 		plot_image(cur_pixel_array_batch[item], cur_emotion_batch[item], sess.run(tf.nn.softmax(normalized_value)), np.argmax(value[0]))
-
+	
 	## DO A WEBCAM
 	face_cascade = cv2.CascadeClassifier('/home/forsythe/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml')
 	cap = cv2.VideoCapture(0)

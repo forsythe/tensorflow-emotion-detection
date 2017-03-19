@@ -84,7 +84,7 @@ def plot_image_no_pred(images, emotion_num):
 	plt.imshow(images, cmap='gray')
 	plt.show()
 
-filename_queue = tf.train.string_input_producer(['filthy_frank.csv'])
+filename_queue = tf.train.string_input_producer(['train.csv'])
 reader = tf.TextLineReader(skip_header_lines=1) #skip_header_lines=1
 _, csv_row = reader.read(filename_queue)
 record_defaults = [[0], [""]]

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pylab import *
 import cv2
+import itertools
 
 import time
 
@@ -15,7 +16,9 @@ happy = 3
 sad = 4
 surprise = 5
 neutral = 6
+colors = ['red', 'brown', 'black', 'orange', 'blue', 'yellow', 'grey']
 
+max_data_points_keep = 50
 ###################NEURAL NETWORK PROPERTIES
 
 n_examples = 28709
@@ -106,12 +109,6 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	plt.tight_layout()
 	plt.show()
 
-def plot_image_no_pred(images, emotion_num):
-	images = np.reshape(images, [48, 48])
-	plt.figure().suptitle("correct emotion: " + emotion_name[emotion_num], fontsize=14, fontweight='bold')
-	plt.imshow(images, cmap='gray')
-	plt.show()
-
 filename_queue = tf.train.string_input_producer(['train.csv'])
 reader = tf.TextLineReader(skip_header_lines=1) #skip_header_lines=1
 _, csv_row = reader.read(filename_queue)
@@ -178,22 +175,12 @@ with tf.Session() as sess:
 		if ckpt and ckpt.model_checkpoint_path:
 			saver.restore(sess, ckpt.model_checkpoint_path)
 			print("NN model has been restored!")
-			'''
-			cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
-			accuracy = 0	
-			append_matrix_emotion = list()
-			append_matrix_name = list()	
-			for item in range(batch_size):
-				cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
-				value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float32)})
-				if cur_emotion_batch[item] == np.argmax(value[0]):
-					accuracy+=1
-			print("Correct:", str(accuracy)+"/"+str(batch_size), "Accuracy:", accuracy/batch_size)
-			'''
 		else:
 			print("no checkpoint found???")
 			exit()
+	
 	## DO A CONFUSION MATRIX
+	'''
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
 	append_matrix_emotion = list()
 	append_matrix_name = list()	
@@ -205,15 +192,20 @@ with tf.Session() as sess:
 	print(confusion_matrix)
 	confusion_matrix = np.array(confusion_matrix)/np.array(confusion_matrix).astype(np.float).sum(axis=1)
 	plt.imshow(confusion_matrix, cmap=plt.cm.RdBu, interpolation='nearest')
+	for i, j in itertools.product(range(confusion_matrix.shape[0]), range(confusion_matrix.shape[1])):
+		    plt.text(j, i, round(confusion_matrix[i, j], 3),
+		             horizontalalignment="center",
+		             color="white")#if confusion_matrix[i, j] > confusion_matrix.max()/2 else "black")
 	plt.xticks(np.arange(0,7), emotion_name[:-1])
 	plt.yticks(np.arange(0,7), emotion_name[:-1])
 	plt.xlabel("Prediction")
 	plt.ylabel("Actual")
 	plt.colorbar()
 	plt.show()
+	'''
 	## DO A VISUALIZE
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
-	for item in range(min(5, batch_size)):
+	for item in range(min(0, batch_size)):
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
 		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
 		normalized_value = (value-np.mean(value))/np.std(value)
@@ -222,42 +214,58 @@ with tf.Session() as sess:
 	## DO A WEBCAM
 	face_cascade = cv2.CascadeClassifier('/home/forsythe/opencv-3.2.0/data/haarcascades/haarcascade_frontalface_default.xml')
 	cap = cv2.VideoCapture(0)
-	#cv2.namedWindow("crop", cv2.WINDOW_NORMAL)
 	z = 7 #zoom factor (lower value is higher zoom)
 	#final plot
 	plt.ion()
-	start_time = time.time()
-	while True:
+	face_last_update_time = time.time()
+	plot_last_update_time = time.time()
+
+	absolute_start_time = time.time()
+	emotion_plot_data = [[], [], [], [], [], [], []]
+	time_plot_data = []
+	y_plot_max = 10
+	
+	while True:	
+		emotion_count = [0]*7
 		ret, img = cap.read()
 		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 		faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
+		#print("\n")			
+		
 		for (xx,yy,w,h) in faces:
 			down_offset = int(h/14)
 			cv2.rectangle(img,(xx+w//z,yy+h//z+down_offset),(xx+w-w//z,yy+h-h//z+down_offset),(255,0,0),2)
-			roi_gray = gray[yy+h//z+down_offset:yy+h-h//z+down_offset, xx+w//z:xx+w-w//z]
-			#print(type(roi_gray))
-			#cv2.imshow("crop", cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA))
-			if time.time() - start_time > 1:
-				start_time = time.time()
+
+		if time.time() - face_last_update_time > 2:
+			face_last_update_time = time.time()
+
+			for (xx,yy,w,h) in faces:
+				down_offset = int(h/14)
+				cv2.rectangle(img,(xx+w//z,yy+h//z+down_offset),(xx+w-w//z,yy+h-h//z+down_offset),(255,0,0),2)
+				roi_gray = gray[yy+h//z+down_offset:yy+h-h//z+down_offset, xx+w//z:xx+w-w//z]
+				#print(type(roi_gray))
+				#cv2.imshow("crop", cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA))
+				#print(time.time()-absolute_start_time)
 				cur_pixel_array = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
 				#print(cur_pixel_array.shape)
-				cv2.imshow("webcam",cur_pixel_array)
-
+				#cv2.imshow("webcam",cur_pixel_array)
+				
 				cur_pixel_array = np.resize(cur_pixel_array, (1, 48*48))
-				#print(len(cur_pixel_array[0]))
-				#print(type(cur_pixel_array[0]))
 				value = sess.run(prediction, feed_dict={x: cur_pixel_array})
 
 				normalized_value = (value-np.mean(value))/np.std(value)
 				correct_emotion = emotion_name[np.argmax(value[0])]
 				best_guess = emotion_name[np.argmax(value[0])]
+				print(best_guess)
+				emotion_count[np.argmax(value[0])] += 1
+				
 				normalized_value = sess.run(tf.nn.softmax(normalized_value))
-
+				
+				'''#single plot
 				txt = ""
 				for k in range(n_classes):
 					txt +=  str(emotion_name[k]) + ": " + str(round(normalized_value[0][k], 3)) + "\n"
-
+				
 				plt.clf()
 				plt.title("Predicted emotion: " + best_guess, fontweight='bold')
 				plt.barh(range(7), normalized_value.tolist()[0], align='center')	
@@ -267,8 +275,35 @@ with tf.Session() as sess:
 				xlabel('Confidence')
 				plt.draw()
 				plt.pause(0.001)
+				'''
+			x_time = round(time.time()-absolute_start_time, 1)
+			time_plot_data.append(x_time)
+			if len(time_plot_data) > max_data_points_keep:
+				time_plot_data.pop(0)
 
+			for e in range(n_classes):
+				emotion_plot_data[e].append(emotion_count[e])
+				if len(emotion_plot_data[e]) > max_data_points_keep:
+					emotion_plot_data[e].pop(0)
 			
+			###live scroll chart
+			plt.clf()
+			plt.grid(True)
+			plt.ylabel("Count")
+			plt.xlabel("Seconds")
+			plt.xlim([int(max(0, x_time-max_data_points_keep)), int(max(x_time, max_data_points_keep))])
+			#print([max(0, x_time-10), min(x_time, 10)])
+
+			plt.ylim([0, y_plot_max])
+			for e in range(n_classes):
+				plt.plot(time_plot_data, emotion_plot_data[e], 'o-', c=colors[e],lw=3, label=emotion_name[e])
+				y_plot_max = max(y_plot_max, np.max(emotion_plot_data[e]))
+			#print(emotion_plot_data)
+			plt.legend(loc='upper left')
+			plt.draw()
+			plt.pause(0.001)
+			###end live scroll chart
+
 		cv2.imshow('img',img)
 		k = cv2.waitKey(30) & 0xff
 		if k == 27:

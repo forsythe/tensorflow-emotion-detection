@@ -1,4 +1,5 @@
 # tensorflow-emotion-detection
+video demo: https://www.youtube.com/watch?v=TljY7nFgm_Y  
 uses opencv, tensorflow, numpy, and matplotlib  
 has nn and cnn implementations  
 (f)nn: ~69-70% on test samples taken from training set  

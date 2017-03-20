@@ -24,10 +24,10 @@ max_data_points_keep = 50
 n_examples = 28709
 n_classes = 7
 
-capacity = 2000
+capacity = 4000
 batch_size = 1000
 min_after_dequeue = 1000
-hm_epochs = 20
+hm_epochs = 3
 
 ###################TENSORFLOW
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'the checkpoint dir')
@@ -36,19 +36,18 @@ FLAGS = tf.app.flags.FLAGS
 x = tf.placeholder('float', [None, 2304]) #48*48=2304
 y = tf.placeholder('float',[None, n_classes])
 
-
 keep_rate = 0.85
 keep_prob = tf.placeholder(tf.float32)
 
-weights = {'W_conv1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+weights = {'W_conv1': tf.Variable(tf.random_normal([5, 5, 1, 32])), 
 			'W_conv2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
-			'W_fc1': tf.Variable(tf.random_normal([12*12*64, 1024])),
-			#'W_fc2': tf.Variable(tf.random_normal([1024, 1024])),
+			'W_conv3': tf.Variable(tf.random_normal([5, 5, 64, 128])), ##64 and 128 are arbitrary, doesn't have to be power of 2
+			'W_fc1': tf.Variable(tf.random_normal([6*6*128, 1024])),
 			'out': tf.Variable(tf.random_normal([1024, n_classes]))}
 biases = {'b_conv1': tf.Variable(tf.random_normal([32])),
 			'b_conv2': tf.Variable(tf.random_normal([64])),
+			'b_conv3': tf.Variable(tf.random_normal([128])),
 			'b_fc1': tf.Variable(tf.random_normal([1024])),
-			#'b_fc2': tf.Variable(tf.random_normal([1024])),
 			'out': tf.Variable(tf.random_normal([n_classes]))}
 
 saver = tf.train.Saver(max_to_keep=1)  # defaults to saving all variables - in this case w and b
@@ -64,12 +63,14 @@ def maxpool2d(x):
 
 def conv_neural_network_model(data):
 	x = tf.reshape(data, shape=[-1, 48, 48, 1])
-	conv1 = conv2d(x, weights['W_conv1']) + biases['b_conv1']
-	conv1 = maxpool2d(conv1)
+	conv1 = conv2d(x, weights['W_conv1']) + biases['b_conv1'] ##here, images are still 48*48
+	conv1 = maxpool2d(conv1) ##images now 24*24
 	conv2 = conv2d(conv1, weights['W_conv2']) + biases['b_conv2']
-	conv2 = maxpool2d(conv2)
+	conv2 = maxpool2d(conv2) ##images now 12*12
+	conv3 = conv2d(conv2, weights['W_conv3']) + biases['b_conv3']
+	conv3 = maxpool2d(conv3) ##images now 6*6
 
-	fc1 = tf.reshape(conv2, [-1, 12*12*64])
+	fc1 = tf.reshape(conv3, [-1, 6*6*128])
 	fc1 = tf.nn.relu(tf.matmul(fc1, weights['W_fc1'])+biases['b_fc1'])
 	fc1 = tf.nn.dropout(fc1, keep_rate)
 	#fc2 = tf.nn.relu(tf.matmul(fc1, weights['W_fc2'])+biases['b_fc2'])
@@ -109,11 +110,11 @@ def plot_image(images, emotion_num, prediction, prediction_best_guess):
 	plt.tight_layout()
 	plt.show()
 
-filename_queue = tf.train.string_input_producer(['train.csv'])
+filename_queue = tf.train.string_input_producer(['fer2013.csv'])
 reader = tf.TextLineReader(skip_header_lines=1) #skip_header_lines=1
 _, csv_row = reader.read(filename_queue)
-record_defaults = [[0], [""]]
-emotion, pixel_array = tf.decode_csv(csv_row, record_defaults=record_defaults)
+record_defaults = [[0], [""], [""]]
+emotion, pixel_array, __ = tf.decode_csv(csv_row, record_defaults=record_defaults)
 
 emotion_batch, pixel_array_batch = tf.train.shuffle_batch(
       [emotion, pixel_array], batch_size=batch_size, capacity=capacity,
@@ -180,7 +181,7 @@ with tf.Session() as sess:
 			exit()
 	
 	## DO A CONFUSION MATRIX
-	'''
+	
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
 	append_matrix_emotion = list()
 	append_matrix_name = list()	
@@ -190,22 +191,22 @@ with tf.Session() as sess:
 		#print(np.argmax(value[0]), cur_emotion_batch[item])
 		confusion_matrix[np.argmax(value[0])][cur_emotion_batch[item]] +=1
 	print(confusion_matrix)
-	confusion_matrix = np.array(confusion_matrix)/np.array(confusion_matrix).astype(np.float).sum(axis=1)
+	confusion_matrix = np.array(confusion_matrix)/np.array(confusion_matrix).astype(np.float).sum(axis=0)
 	plt.imshow(confusion_matrix, cmap=plt.cm.RdBu, interpolation='nearest')
 	for i, j in itertools.product(range(confusion_matrix.shape[0]), range(confusion_matrix.shape[1])):
 		    plt.text(j, i, round(confusion_matrix[i, j], 3),
 		             horizontalalignment="center",
-		             color="white")#if confusion_matrix[i, j] > confusion_matrix.max()/2 else "black")
+		             color="white" if (confusion_matrix[i, j] < confusion_matrix.max()*1/5.0 or confusion_matrix[i, j] > confusion_matrix.max()*4/5.0) else "black")
 	plt.xticks(np.arange(0,7), emotion_name[:-1])
 	plt.yticks(np.arange(0,7), emotion_name[:-1])
-	plt.xlabel("Prediction")
-	plt.ylabel("Actual")
+	plt.xlabel("Actual")
+	plt.ylabel("Prediction")
 	plt.colorbar()
 	plt.show()
-	'''
+	
 	## DO A VISUALIZE
 	cur_emotion_batch, cur_pixel_array_batch = sess.run([emotion_batch, pixel_array_batch])	
-	for item in range(min(0, batch_size)):
+	for item in range(min(10, batch_size)):
 		cur_pixel_array_batch[item] = np.fromstring(cur_pixel_array_batch[item], dtype=int, sep=" ")
 		value = sess.run(prediction, feed_dict={x: np.array([cur_pixel_array_batch[item]] , dtype=np.float64)})
 		normalized_value = (value-np.mean(value))/np.std(value)
